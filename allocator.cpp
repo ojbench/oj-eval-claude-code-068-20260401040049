@@ -228,8 +228,8 @@ void TLSFAllocator::mergeAdjacentFreeBlocks(FreeBlock* block) {
 void* TLSFAllocator::allocate(std::size_t size) {
     if (size == 0) return nullptr;
 
-    // Align size to include header
-    std::size_t totalSize = size + sizeof(BlockHeader);
+    // Align size to include header (must be at least FreeBlock size for deallocation)
+    std::size_t totalSize = size + sizeof(FreeBlock);
 
     // Align to 8 bytes
     totalSize = (totalSize + 7) & ~7;
@@ -257,16 +257,13 @@ void* TLSFAllocator::allocate(std::size_t size) {
 void TLSFAllocator::deallocate(void* ptr) {
     if (!ptr) return;
 
-    // Get the block header
-    BlockHeader* blockHeader = reinterpret_cast<BlockHeader*>(
+    // Get the block header (user pointer points to data after BlockHeader)
+    FreeBlock* block = reinterpret_cast<FreeBlock*>(
         reinterpret_cast<char*>(ptr) - sizeof(BlockHeader)
     );
 
     // Mark the block as free
-    blockHeader->isFree = true;
-
-    // Convert to FreeBlock
-    FreeBlock* block = static_cast<FreeBlock*>(blockHeader);
+    block->isFree = true;
     block->prevFree = nullptr;
     block->nextFree = nullptr;
 
